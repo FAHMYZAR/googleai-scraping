@@ -71,9 +71,21 @@ async def lifespan(app: FastAPI):
         worker_process = subprocess.Popen(
             [AppConfig.NODE_BIN, str(worker_script)],
             env=env,
-            stdout=None,
-            stderr=None
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1
         )
+        
+        # Start background threads to read node worker stdout/stderr
+        import threading
+        def log_reader(pipe, prefix):
+            for line in iter(pipe.readline, ""):
+                print(f"{prefix}: {line.strip()}", flush=True)
+            pipe.close()
+            
+        threading.Thread(target=log_reader, args=(worker_process.stdout, "[NODE-OUT]"), daemon=True).start()
+        threading.Thread(target=log_reader, args=(worker_process.stderr, "[NODE-ERR]"), daemon=True).start()
         
         import requests
         for _ in range(10):
