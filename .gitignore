@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+lib/services/worker/node_modules/
+api-fahmyzzx/lib/services/worker/node_modules/
+npm-debug.log*
+
+# Secrets / credentials
+.env
+api-fahmyzzx/.env
+cookies.json
+api-fahmyzzx/cookies.json
+api-fahmyzzx/www.google.com.cookies.json
+moodle_uaa_cookies.pkl
+api-fahmyzzx/moodle_uaa_cookies.pkl
+
+# Runtime temp uploads
+*.tmp
+*.log
+*.pid
+
+# Docker local overrides
+docker-compose.override.yml
+api-fahmyzzx/docker-compose.override.yml

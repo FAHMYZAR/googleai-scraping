@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  api-fahmyzzx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-fahmyzzx
+    restart: unless-stopped
+    ports:
+      - "9876:9876"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "9876"
+      GAI_WORKER_HOST: "127.0.0.1"
+      GAI_WORKER_PORT: "9879"
+      GAI_USE_PERSISTENT_WORKER: "true"
+      NODE_BIN: "node"
+      CHROME_BIN: "/usr/bin/chromium"
+      COOKIES_PATH: "/app/cookies.json"
+      # Akan diisi dari Environment Portainer
+      PROVIDER_API_KEY: "${PROVIDER_API_KEY}"
+      GOOGLE_COOKIES_JSON: "${GOOGLE_COOKIES_JSON}"
+      MOODLE_UAA_COOKIES_PKL_B64: "${MOODLE_UAA_COOKIES_PKL_B64}"
+    shm_size: "1gb"
+    security_opt:
+      - seccomp=unconfined
+    cap_add:
+      - SYS_ADMIN
