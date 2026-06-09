@@ -13,8 +13,16 @@ class WorkerHttpClient:
 
     def health(self):
         response = requests.get(f"{self.base_url}/health", timeout=10)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response.raise_for_status()
+            return response.json()
+        except Exception:
+            from json import JSONDecodeError
+            try:
+                err = response.json()
+            except (ValueError, JSONDecodeError):
+                err = {"ok": False, "error": response.text[:500] or f"HTTP {response.status_code}"}
+            raise WorkerHttpClientError("Node worker: " + str(err.get("error", str(err)))) from None
 
     def chat(self, message: str, file_path: str | None = None) -> dict:
         response = requests.post(
@@ -22,10 +30,26 @@ class WorkerHttpClient:
             json={"message": message, "file": file_path},
             timeout=max(30, AppConfig.GAI_TIMEOUT // 1000 + 20),
         )
-        response.raise_for_status()
-        return response.json()
+        try:
+            response.raise_for_status()
+            return response.json()
+        except Exception:
+            from json import JSONDecodeError
+            try:
+                err = response.json()
+            except (ValueError, JSONDecodeError):
+                err = {"ok": False, "error": response.text[:500] or f"HTTP {response.status_code}"}
+            raise WorkerHttpClientError("Node worker: " + str(err.get("error", str(err)))) from None
 
     def reset(self) -> dict:
         response = requests.post(f"{self.base_url}/reset", timeout=15)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response.raise_for_status()
+            return response.json()
+        except Exception:
+            from json import JSONDecodeError
+            try:
+                err = response.json()
+            except (ValueError, JSONDecodeError):
+                err = {"ok": False, "error": response.text[:500] or f"HTTP {response.status_code}"}
+            raise WorkerHttpClientError("Node worker: " + str(err.get("error", str(err)))) from None
