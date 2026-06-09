@@ -21,6 +21,7 @@ npm-debug.log*
 # Secrets / credentials
 .env
 api-fahmyzzx/.env
+cookies-1line.json
 cookies.json
 api-fahmyzzx/cookies.json
 api-fahmyzzx/www.google.com.cookies.json
@@ -35,3 +36,4 @@ api-fahmyzzx/moodle_uaa_cookies.pkl
 # Docker local overrides
 docker-compose.override.yml
 api-fahmyzzx/docker-compose.override.yml
+cookies-1line.json
