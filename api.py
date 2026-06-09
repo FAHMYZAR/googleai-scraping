@@ -51,7 +51,10 @@ async def lifespan(app: FastAPI):
     
     # 1. Pastikan folder data dibuat
     AppConfig.DATA_DIR.mkdir(parents=True, exist_ok=True)
-    
+    if not AppConfig.GAI_COOKIES_PATH.exists():
+        AppConfig.GAI_COOKIES_PATH.write_text("[]", encoding="utf-8")
+    if not AppConfig.COOKIE_FILE.exists():
+        AppConfig.COOKIE_FILE.write_bytes(b"")
     # 2. Check Chromium on Linux
     check_and_install_chromium()
     
