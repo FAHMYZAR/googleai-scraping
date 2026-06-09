@@ -27,6 +27,10 @@ class MoodleSessionService:
         for name, value in cookies.items():
             self.session.cookies.set(name, value, domain="elearning.almaata.ac.id")
 
+    def save_cookies(self, cookies: dict):
+        with open(self.cookie_file, "wb") as file:
+            pickle.dump(cookies, file)
+
     def get(self, url: str, **kwargs):
         full_url = url if url.startswith("http") else f"{self.base_url}{url}"
         return self.session.get(full_url, **kwargs)
@@ -36,7 +40,12 @@ class MoodleSessionService:
         return self.session.post(full_url, **kwargs)
 
     def get_sesskey(self):
-        response = self.get("/my/", timeout=15)
+        response = self.get("/my/", timeout=15, allow_redirects=True)
+        final_url = str(response.url).lower()
+
+        if any(key in final_url for key in ["login", "/index.php", "forgot_password", "logout"]):
+            raise ValueError("Session Moodle invalid atau diarahkan ke login.")
+
         match = re.search(r'"sesskey":"(\w+)"', response.text) or re.search(r'sesskey=(\w+)', response.text)
         if not match:
             raise ValueError("Sesskey not found. Cookie may be expired.")

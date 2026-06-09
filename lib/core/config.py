@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+
 class AppConfig:
     APP_NAME = "api-fahmyzzx"
     APP_DIR = Path(__file__).resolve().parents[2]
@@ -18,7 +19,6 @@ class AppConfig:
     _cp = os.getenv("COOKIES_PATH", str(APP_DIR / "cookies.json"))
     GAI_COOKIES_PATH = Path(_cp) if Path(_cp).is_absolute() else APP_DIR / _cp
 
-# Persistent GAI worker
-AppConfig.GAI_WORKER_HOST = os.getenv("GAI_WORKER_HOST", "127.0.0.1")
-AppConfig.GAI_WORKER_PORT = int(os.getenv("GAI_WORKER_PORT", "9879"))
-AppConfig.GAI_USE_PERSISTENT_WORKER = os.getenv("GAI_USE_PERSISTENT_WORKER", "true").lower() == "true"
+    GAI_WORKER_HOST = os.getenv("GAI_WORKER_HOST", "127.0.0.1")
+    GAI_WORKER_PORT = int(os.getenv("GAI_WORKER_PORT", "9879"))
+    GAI_USE_PERSISTENT_WORKER = os.getenv("GAI_USE_PERSISTENT_WORKER", "true").lower() == "true"

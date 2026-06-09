@@ -1,16 +1,15 @@
+import base64
 import json
+import os
+import tempfile
 import time
 import uuid
-import base64
-import tempfile
-import os
-from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException, UploadFile, File, Form
-from fastapi.responses import PlainTextResponse, JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
+from lib.core.auth import require_api_key
 from lib.core.config import AppConfig
 from lib.services.gai_provider import GaiProviderService
 
@@ -27,14 +26,6 @@ class ChatCompletionRequest(BaseModel):
     model: str
     messages: list[ChatMessage]
     stream: bool = False
-
-
-def require_bearer(authorization: str | None):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing bearer token")
-    token = authorization.split(" ", 1)[1].strip()
-    if token != AppConfig.PROVIDER_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 def extract_text_content(content: Any) -> str:
@@ -61,7 +52,6 @@ def extract_image_content(content: Any) -> str | None:
 
 
 def build_prompt(messages: list[ChatMessage]) -> tuple[str, str | None]:
-    """Return (prompt_text, base64_image_url_or_None)."""
     system_parts = []
     user_parts = []
     image_url = None
@@ -99,7 +89,6 @@ def append_sources(content: str, sources: list) -> str:
 
 
 def save_base64_image(data_url: str) -> str | None:
-    """Save base64 image URL to temp file, return absolute file path."""
     if not data_url or not data_url.startswith("data:image"):
         return None
     try:
@@ -118,8 +107,8 @@ def save_base64_image(data_url: str) -> str | None:
 
 
 @router.get("/models")
-def list_models(authorization: str | None = Header(default=None)):
-    require_bearer(authorization)
+def list_models(token: str = Depends(require_api_key)):
+    """Mendapatkan daftar model yang didukung provider Google AI (OpenAI format)."""
     return {
         "object": "list",
         "data": [
@@ -134,9 +123,8 @@ def list_models(authorization: str | None = Header(default=None)):
 
 
 @router.post("/chat/completions")
-def chat_completions(payload: ChatCompletionRequest, authorization: str | None = Header(default=None)):
-    require_bearer(authorization)
-
+def chat_completions(payload: ChatCompletionRequest, token: str = Depends(require_api_key)):
+    """Kirim chat prompt ke Google AI Mode (OpenAI format, mendukung Base64 Image upload)."""
     if not payload.messages:
         raise HTTPException(status_code=400, detail="messages kosong")
 
@@ -144,7 +132,6 @@ def chat_completions(payload: ChatCompletionRequest, authorization: str | None =
     if not prompt.strip() and not image_data_url:
         raise HTTPException(status_code=400, detail="messages tidak mengandung text/image")
 
-    # Save image to temp file if present
     file_path = None
     try:
         file_path = save_base64_image(image_data_url) if image_data_url else None
@@ -185,15 +172,14 @@ def chat_completions(payload: ChatCompletionRequest, authorization: str | None =
         },
     }
 
+
 @router.post("/chat/file")
 async def chat_with_file(
     file: UploadFile = File(...),
     message: str = Form(""),
-    authorization: str | None = Header(default=None)
+    token: str = Depends(require_api_key),
 ):
-    require_bearer(authorization)
-
-    # Save uploaded file to tmp
+    """Kirim pertanyaan ke Google AI dengan input multipart Upload File (gambar/pdf)."""
     suffix = Path(file.filename).suffix if file.filename else ".png"
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=AppConfig.APP_DIR)
     content = await file.read()

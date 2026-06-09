@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -48,10 +49,8 @@ def check_and_install_chromium():
 async def lifespan(app: FastAPI):
     global worker_process
     
-    # 1. Check Chromium on Linux
     check_and_install_chromium()
     
-    # 2. Auto-start Node worker
     if AppConfig.GAI_USE_PERSISTENT_WORKER:
         worker_script = AppConfig.APP_DIR / "lib" / "services" / "worker" / "server.mjs"
         env = os.environ.copy()
@@ -66,7 +65,6 @@ async def lifespan(app: FastAPI):
             stderr=subprocess.STDOUT
         )
         
-        # Wait until worker is healthy
         import requests
         for _ in range(10):
             try:
@@ -80,7 +78,6 @@ async def lifespan(app: FastAPI):
 
     yield
     
-    # Cleanup on shutdown
     if worker_process:
         print("Mematikan Node worker...")
         worker_process.terminate()
@@ -89,14 +86,95 @@ async def lifespan(app: FastAPI):
         except subprocess.TimeoutExpired:
             worker_process.kill()
 
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    schema = get_openapi(
+        title="api-fahmyzzx",
+        version="1.0.0",
+        description="""
+# api-fahmyzzx - Multi-Module API Service
+
+## Authentication 🔐
+Semua endpoint **wajib** menyertakan **Bearer Token** di Header `Authorization` (kecuali `/health`).
+Token dapat diatur lewat **Environment Variable** `PROVIDER_API_KEY` di Portainer.
+
+```bash
+Authorization: Bearer rahasia_kamu
+```
+
+## Endpoint Modules
+| Prefix | Module | Auth |
+|--------|--------|------|
+| `/health` | Health check | ❌ (public) |
+| `/api/tugas` | Moodle Semester 4 assignments | ✅ Bearer |
+| `/v1/*` | Google AI Mode Chat (OpenAI-Compatible) | ✅ Bearer |
+| `/config/*` | Runtime config & credential injection | ✅ Bearer |
+
+## Google AI Mode (GAI) Usage
+Kirim chat biasa:
+```json
+{
+  "model": "google-ai-mode",
+  "messages": [{"role": "user", "content": "Apa itu AI?"}],
+  "stream": false
+}
+```
+
+Kirim dengan gambar Base64:
+```json
+{
+  "model": "google-ai-mode",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "Apa yang ada di gambar ini?"},
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,iVBOR..."}}
+      ]
+    }
+  ]
+}
+```
+""",
+        routes=app.routes,
+    )
+
+    schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "description": "Masukkan PROVIDER_API_KEY",
+        }
+    }
+
+    for path in schema["paths"]:
+        for method in schema["paths"][path]:
+            # Tambahkan security Bearer ke setiap operasi kecuali health check
+            if "health" not in path:
+                schema["paths"][path][method].setdefault("security", []).append({"BearerAuth": []})
+
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
 app = FastAPI(
     title="api-fahmyzzx",
     version="1.0.0",
-    docs_url=None,  # disable default docs to override
-    lifespan=lifespan
+    docs_url=None,
+    lifespan=lifespan,
 )
 
+app.openapi = custom_openapi
 include_all_routes(app)
+
+
+@app.get("/health")
+def health():
+    return {"success": True, "service": AppConfig.APP_NAME, "status": "ok"}
+
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
@@ -106,6 +184,7 @@ async def custom_swagger_ui_html():
         swagger_favicon_url="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐻</text></svg>"
     )
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api:app", host="127.0.0.1", port=9876, reload=True)
+    uvicorn.run("api:app", host="0.0.0.0", port=9876, reload=False)

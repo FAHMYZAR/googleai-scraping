@@ -1,47 +1,139 @@
-# Deploy Portainer Langsung dari GitHub Repo (Private)
+# api-fahmyzzx - Portainer Deployment Guide
 
-Mode ini didesain 100% aman untuk GitHub private repository. Kamu **TIDAK PERLU** nge-push credentials (`.env`, `cookies.json`, atau file `.pkl`) ke repo. Semua *secret* diinject langsung dari UI Portainer sebagai *Environment Variables*.
+## Ringkas
+Aplikasi ini jalan sebagai:
+- `FastAPI` utama di port `9876`
+- `Node.js worker` internal untuk Google AI Mode di port `9879`
+- `Chromium` auto-discovery/auto-install di Linux container
 
-## Daftar File yang Boleh & Wajib Masuk GitHub:
-Pastikan `.gitignore` tetap seperti aslinya. File yang akan ke-push:
+## Authentication
+Semua endpoint penting wajib pakai header:
+```http
+Authorization: Bearer <PROVIDER_API_KEY>
+```
+Token ini diatur dari Environment Variable `PROVIDER_API_KEY` di Portainer.
+
+## File yang aman di-upload ke GitHub
+Upload folder ini saja:
 ```text
 api-fahmyzzx/
-├── lib/                     # Folder source code
-├── api.py                   # Script main FastAPI
-├── requirements.txt         # Dependencies Python
-├── Dockerfile               # Spesifikasi image build
-├── docker-compose.yml       # Stack configuration
-├── entrypoint.sh            # Script ekstraksi env to file
-├── .dockerignore            # Aturan ignore image
-├── .gitignore               # Aturan ignore repo
-└── .env.example             # Contoh template environment
+├── api.py
+├── Dockerfile
+├── docker-compose.yml
+├── entrypoint.sh
+├── requirements.txt
+├── README-DOCKER.md
+├── README-PORTAINER.md
+├── .dockerignore
+├── .gitignore
+├── .env.example
+└── lib/
 ```
 
-File yang otomatis ke-block oleh git (jangan di-force add):
-- `cookies.json`
+Jangan upload secret runtime:
 - `.env`
+- `cookies.json`
+- `www.google.com.cookies.json`
 - `moodle_uaa_cookies.pkl`
-- `node_modules`
+- `node_modules/`
 
-## Cara Setup di Portainer
+## Environment Variables Portainer
+Isi di Stack -> Environment Variables:
 
-1. Masuk ke Portainer -> **Stacks** -> **Add stack**
-2. Pilih metode **Repository** (Bukan Web editor).
-3. Masukkan info repo private kamu:
-   - **Repository URL**: `https://github.com/fahmyzzx/repo-kamu.git`
-   - **Repository reference**: `main` (atau branch kamu)
-   - **Compose path**: `api-fahmyzzx/docker-compose.yml` (sesuaikan kalau folder berbeda)
-   - **Authentication**: Aktifkan dan masukkan username + Access Token GitHub.
+```env
+PROVIDER_API_KEY=isi_token_acak_kamu
+GOOGLE_COOKIES_JSON=[{"name":"...","value":"..."}]
+MOODLE_UAA_COOKIES_PKL_B64=base64_dari_file_pkl_opsional
+HOST=0.0.0.0
+PORT=9876
+GAI_WORKER_HOST=127.0.0.1
+GAI_WORKER_PORT=9879
+GAI_USE_PERSISTENT_WORKER=true
+NODE_BIN=node
+CHROME_BIN=/usr/bin/chromium
+```
 
-4. Scroll ke bawah ke bagian **Environment variables**, klik **Add environment variable**. Tambahkan ini:
+## Endpoint
+### 1) Health
+```bash
+curl http://127.0.0.1:9876/health
+```
 
-| Name | Value | Penjelasan |
-|---|---|---|
-| `PROVIDER_API_KEY` | `rahasia_api_key_ku` | Password untuk hit endpoint `/v1/*` ini. |
-| `GOOGLE_COOKIES_JSON` | `[{"domain":".google.com",...}]` | Copy isi `cookies.json` kamu ke sini (1 baris string utuh). |
-| `MOODLE_UAA_COOKIES_PKL_B64` | `gAN9cQAoWAEAA...` | (Opsional) Kalau mau pakai API Moodle tugas. Cara dapatnya: `cat moodle_uaa_cookies.pkl | base64 -w 0`. |
+### 2) Model list
+```bash
+curl http://127.0.0.1:9876/v1/models \
+  -H "Authorization: Bearer $PROVIDER_API_KEY"
+```
 
-5. Klik tombol **Deploy the stack**.
-6. Portainer akan mengunduh source, build Dockerfile (sekitar 3-5 menit karena install Node.js+Chrome), mengekstrak env menjadi file asli lewat `entrypoint.sh`, lalu me-run uvicorn API.
+### 3) Chat completions
+```bash
+curl http://127.0.0.1:9876/v1/chat/completions \
+  -H "Authorization: Bearer $PROVIDER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "google-ai-mode",
+    "messages": [
+      {"role": "user", "content": "Halo, jawab singkat"}
+    ],
+    "stream": false
+  }'
+```
 
-Selesai. Endpoint AI Mode siap dipakai di port *9876*!
+### 4) Chat with image URL base64
+```bash
+curl http://127.0.0.1:9876/v1/chat/completions \
+  -H "Authorization: Bearer $PROVIDER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "google-ai-mode",
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {"type": "text", "text": "Apa isi gambar ini?"},
+          {"type": "image_url", "image_url": {"url": "data:image/png;base64,...."}}
+        ]
+      }
+    ],
+    "stream": false
+  }'
+```
+
+### 5) Save Google cookies
+```bash
+curl -X POST http://127.0.0.1:9876/config/google/cookies \
+  -H "Authorization: Bearer $PROVIDER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '[{"name":"SID","value":"..."}]'
+```
+
+### 6) Save Moodle session (Base64 PKL)
+```bash
+curl -X POST http://127.0.0.1:9876/config/moodle/session \
+  -H "Authorization: Bearer $PROVIDER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"cookies_pkl_base64":"BASE64_HERE"}'
+```
+
+### 7) Validate Moodle session
+```bash
+curl -X POST http://127.0.0.1:9876/config/moodle/validate \
+  -H "Authorization: Bearer $PROVIDER_API_KEY"
+```
+
+## Portainer Stack
+- Repo: private GitHub repo
+- Compose path: `api-fahmyzzx/docker-compose.yml`
+- Env: isi semua variable di atas
+- Deploy: Portainer akan build image dan start service otomatis
+
+## Swagger UI
+- URL: `http://127.0.0.1:9876/docs`
+- Favicon: beruang 🐻
+- Semua endpoint penting sudah diberi security BearerAuth
+
+## Catatan
+- `PROVIDER_API_KEY` bebas kamu ganti dari Portainer.
+- Kalau token kosong, API mode testing bisa jalan, tapi sebaiknya jangan untuk production.
+- Worker Google AI start otomatis dari `api.py`.
+- Kalau Linux container belum punya Chromium, API akan coba install dulu.
