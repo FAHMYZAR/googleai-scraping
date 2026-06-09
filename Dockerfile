@@ -51,8 +51,6 @@ RUN cd lib/services/worker && npm ci --omit=dev --legacy-peer-deps
 
 # Copy all app files
 COPY . .
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
 # Default runtime env
 ENV HOST=0.0.0.0 \
@@ -68,5 +66,4 @@ EXPOSE 9876
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9876/health', timeout=5).read()" || exit 1
 
-ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "9876"]

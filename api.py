@@ -49,13 +49,20 @@ def check_and_install_chromium():
 async def lifespan(app: FastAPI):
     global worker_process
     
+    # 1. Pastikan folder data dibuat
+    AppConfig.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # 2. Check Chromium on Linux
     check_and_install_chromium()
     
+    # 3. Auto-start Node worker
     if AppConfig.GAI_USE_PERSISTENT_WORKER:
         worker_script = AppConfig.APP_DIR / "lib" / "services" / "worker" / "server.mjs"
         env = os.environ.copy()
         env["COOKIES_PATH"] = str(AppConfig.GAI_COOKIES_PATH)
         env["GAI_WORKER_PORT"] = str(AppConfig.GAI_WORKER_PORT)
+        if "CHROME_BIN" in os.environ:
+            env["CHROME_BIN"] = os.environ["CHROME_BIN"]
         
         print(f"Memulai Node worker di port {AppConfig.GAI_WORKER_PORT}...")
         worker_process = subprocess.Popen(
@@ -78,6 +85,7 @@ async def lifespan(app: FastAPI):
 
     yield
     
+    # Cleanup on shutdown
     if worker_process:
         print("Mematikan Node worker...")
         worker_process.terminate()
