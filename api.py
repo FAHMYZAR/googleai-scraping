@@ -68,8 +68,12 @@ async def lifespan(app: FastAPI):
             env["CHROME_BIN"] = os.environ["CHROME_BIN"]
         
         print(f"Memulai Node worker di port {AppConfig.GAI_WORKER_PORT}...")
+        worker_cmd = [AppConfig.NODE_BIN, str(worker_script)]
+        if sys.platform.startswith("linux"):
+            worker_cmd = ["xvfb-run", "-a"] + worker_cmd
+
         worker_process = subprocess.Popen(
-            [AppConfig.NODE_BIN, str(worker_script)],
+            worker_cmd,
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
