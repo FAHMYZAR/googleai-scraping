@@ -71,8 +71,8 @@ async def lifespan(app: FastAPI):
         worker_process = subprocess.Popen(
             [AppConfig.NODE_BIN, str(worker_script)],
             env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT
+            stdout=None,
+            stderr=None
         )
         
         import requests
