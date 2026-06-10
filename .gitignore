@@ -27,7 +27,10 @@ api-fahmyzzx/cookies.json
 api-fahmyzzx/www.google.com.cookies.json
 moodle_uaa_cookies.pkl
 api-fahmyzzx/moodle_uaa_cookies.pkl
-# sss
+# State files
+data/moodle_cookies.json
+data/cookies.json
+data/ipc-*.json
 # Runtime temp uploads
 *.tmp
 *.log

@@ -1,22 +1,9 @@
 # 🐻 API-FAHMYZZX (v1.0.0)
 
-```text
- 💀 ======================================================= 💀
-    ___    ____  ____       ______ ___   __  ____  ____ ___  _  __
-   /   |  / __ \/  _/      / ____//   | /  |/  / |/ /_  |__ / |/ /
-  / /| | / /_/ // /______ / /_   / /| |/ /|_/ /|    / / / / /|   / 
- / ___ |/ ____// /______/ __/   / ___ / /  / //    / / /_/__/   |  
-/_/  |_/_/    /___/    /_/     /_/  |_/_/  /_//_/|_/ /___/ /_/|_|  
-                                                                   
- 💀 ============================== SECURED WITH BEARER ================= 💀
-```
+[![Bun](https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white)](https://bun.sh)
+[![Hono](https://img.shields.io/badge/Hono-E36002?style=for-the-badge&logo=hono&logoColor=white)](https://hono.dev)
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
-[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org)
-[![Puppeteer](https://img.shields.io/badge/Puppeteer-40B5A4?style=for-the-badge&logo=puppeteer&logoColor=white)](https://pptr.dev)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com)
-
-**FastAPI Gateway + Persistent Puppeteer Worker** bypasses Google AI Mode limits and crawls Moodle.
+**Hono API Gateway on Bun + Bun Webview IPC** bypasses Google AI Mode limits and crawls Moodle.
 
 ---
 
@@ -27,26 +14,28 @@
        │ (Authorization: Bearer <PROVIDER_API_KEY>)
        ▼
  ┌──────────────────────────────────────────────┐
- │ FastAPI (Port 9876)                          │ <── /docs (Favicon: 🐻)
+ │ Bun/Hono Server (Port 9876)                  │
  └──────┬───────────────────────────────────────┘
         │
-        ├──────► Moodle Service (Loads moodle_uaa_cookies.pkl)
+        ├──────► Moodle Service (Loads moodle_cookies.json via fetch)
         │
-        └──────► [HTTP IPC] ──► Node.js Worker (Port 9879)
-                                    └── Puppeteer (Persistent Chrome Headless)
+        └──────► [IPC Subprocess] ──► Bun Webview (Webview-Bun IPC)
 ```
 
 ---
 
-## ⚡ Deployment (Portainer / Docker)
+## ⚡ Deployment & Running
 
-1. **Copy `docker-compose.yml` to Portainer Stack.**
-2. **Define environment variables:**
+1. **Define environment variables in `.env`:**
    ```env
    PROVIDER_API_KEY=your-custom-hacker-secret-token
    MODEL_ID=google-ai-mode
+   PORT=9876
    ```
-3. **Deploy Stack.**
+2. **Run Server:**
+   ```bash
+   bun run src/index.ts
+   ```
 
 ---
 
@@ -70,7 +59,7 @@ curl -X POST http://127.0.0.1:9876/config/google/cookies \
   -d '[{"name":"__Secure-1PSID","value":"cookie_value_here","domain":".google.com"}]'
 ```
 
-### 3. Inject Moodle Cookies
+### 3. Inject Moodle Cookies (Accepts Base64 encoded Python PKL format)
 ```bash
 curl -X POST http://127.0.0.1:9876/config/moodle/session \
   -H "Authorization: Bearer <KEY>" \
@@ -81,21 +70,4 @@ curl -X POST http://127.0.0.1:9876/config/moodle/session \
 ### 4. Fetch Moodle Tasks
 ```bash
 curl http://127.0.0.1:9876/api/tugas -H "Authorization: Bearer <KEY>"
-```
-
----
-
-## 📂 Git Upload Files
-```text
-api-fahmyzzx/
-├── lib/
-│   ├── core/      # Config, Router loader, Auth
-│   ├── routes/    # Endpoint handlers (v1, config, tasks)
-│   └── services/  # GAI and Moodle logic
-├── api.py
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── .dockerignore
-└── .gitignore
 ```
