@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DISPLAY=
 
 WORKDIR /app
-
+#ffffgfgff
 # System deps: chromium + nodejs + browser libs
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
